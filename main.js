@@ -1,22 +1,18 @@
-import { promises as fs } from 'fs' //importo solamente promesas  
+import {promises as fs} from 'fs' //importo solamente promesas  
+import path from 'path';
 class ProductManager{
-
-    constructor(){
+   constructor(){
         this.path = this.path //mediante el path hago todas las operaciones del txt
         this.products = [];
-        
+        this.incrementId = 1
+     try {
+      const data = fs.readFile(this.path)
+      this.products = JSON.parse(data)
+      this.incrementId = this.incrementId()
+    } catch (error) {
+      console.error(`Can not read File ${this.path}: ${error}`);
     }
-      
-    validate(title, description, thumbnail, price, code, stock, id){
-        
-            this.title = title;
-            this.description = description;
-            this.price = price;
-            this.thumbnail = thumbnail;
-            this.code = code;
-            this.stock = stock;
-
-        } 
+  } 
 
   static incrementId() {
     if (this.incrementId) {
@@ -26,109 +22,124 @@ class ProductManager{
           }
           return this.incrementId
        }
-     
+saveProducts(){
+  try {
+    const data = JSON.stringify(this.products, null, 2)
+    fs.writeFile(this.path, data)
+  } catch (error) {
+    console.log(`error writing to file ${this.path} : ${error} `)
+  }
+}   
 //poner el await en el addproduct y modificar para que ande bien el id
-async addProduct (product) {
-
-    if (this.products.find((product.code == product.code)) ) {
-     return("product already exist ");
-     } else {
-      const prodsJSON = await fs.readFile(this.path, 'utf-8')
-      const product = JSON.parse(prodsJSON)
-      product.id = ProductManager.incrementId() //al añadir un producto hacemos que incremente el id 
-      prods.push(products)
-      await fs.writeFile(this.path, JSON.stringify(prods))
-      return 'product was created';
-      }
+async addProduct (title, description, price, thumbnail, code, stock) {
+// valido que todos los campos sean obligatorios
+if (!title || !description || !price || !thumbnail || !code || !stock ) {
+  console.error(`All fields are required`);
+  return;
+}
+//validar que el campo "code" no se repita
+const productExists = this.products.some(product => product.code === code)
+    if (productExists) {
+     console.error(`the product ${code} already exists`);
+     return;
+     } 
+    
+ const newProduct = {
+      id: this.incrementId++, 
+      title,
+      description,
+      thumbnail,
+      code, 
+      stock
+     };
+     this.products.push(newProduct)
+     this.saveProducts();
+     console.log("The product was added successfully")
       
     }
     
     //getProduct debe devolver un arreglo vacio
-   async getProduct(){
+   async getProducts(){
         //consulto el array del txt 
-       const products = await fs.readFile(this.path, 'utf-8')
-       const prods = JSON.parse(products)
-       console.log(prods)
-        
-       return products
+     return this.products
     }
 
-   async   getProductById(id){
+   async getProductById(id){
      const prodsJSON =   await fs.readFile(this.path, 'utf-8')
      const prods = JSON.parse(prodsJSON)
      const product = this.products.find(producto => producto.id == id);
-
-     product ? console.log("Not found") : console.log(product);
-       
-      return productById;
+     if (!product) {
+      console.error(`Product id not found ${id}`);
+    }
+      return product;
     }
 
 
-    async updateProduct (id,{title, description, price, code, thumbnail, stock}){
-      const prodsJSON = await fs.readFile(this.path, 'utf-8')
-      const prods = JSON.parse(prodsJSON)
-
-      if (prods.some(prod => prod.id == parseInt(id))) {
-        let index = prods.findIndex (prod => prod.id == parseInt(id))
-        prods[index].title = title
-        prods[index].description = description
-        prods[index].price = price 
-        prods[index].thumbnail = thumbnail
-        prods[index].code = code
-        prods[index].stock = stock
-        await fs.writeFile(this.path, JSON.stringify, (prods))
-        return 'product updated'
-      } else {
-        return 'product was not updated'
+    async updateProduct (id, updateData){
+     const productIndex = this.products.findIndex(product=> product.id === id)
+     {
+      if(productIndex === -1){
+        console.error(`Product id ${id} was not found`);
+        return;
       }
-      
-   }
+      const updateProduct = {...this.products[productIndex], ...updateData};
+      this.products[productIndex] = updateProduct;
+      this.saveProducts();
+      console.log(`Product id ${id} successfully updated`)
+     }
+    }
 
-   async delateProduct(product){
-    const prodsJSON = await fs.readFile(this.path, 'utf-8')
-    const prods = JSON.parse(prodsJSON)
-    if(prods.some(prod => prod.id === parseInt(id))){
-      const prodsFiltrados = prods.filter(prod !== parseint)
-        await fs.writeFile(this.path, JSON.stringify(prodsFiltrados))
-    
-    return 'product delated'
-       }else{
-         return 'product was not deleted'
-   }
-  
+    delateProduct(id){
+    const productIndex =this.products.findIndex(product => product.id === id);
+    if(productIndex === -1){
+      console.error(`product id ${id} does not finded`)
+      return;
+    }
+    this.products.splice(productIndex, 1)
+    this.saveProducts();
+    console.log(`product id  ${id} successfully delated `)
+    }
   }
-}
+  
+  
+  
 
-const product = new ProductManager('./info.txt') //inserte la ruta al archivo txt, esta me permite guardar y ejecutar mis archivos
+
+const product = new ProductManager('./products.json') //inserte la ruta al archivo txt, esta me permite guardar y ejecutar mis archivos
 
 product.getProduct().then(prods => console.log(prods))
 
-ProductManager.addProduct(product1)
-ProductManager.addProduct(product2)
-const product1 = {
-    title: "Remera",
-    description: "Remera de algodon",
-    price: 1000,
-    thumbnail: "https://d3ugyf2ht6aenh.cloudfront.net/stores/188/770/products/remera-negra-remera-hombre-remera-basica-21-6952776c38b5e6844216537450098865-640-0.webp",
-    stock: 10
+ ProductManager.addProduct( 
+    "Remera",
+    "Remera de algodon",
+    1000,
+    "https://d3ugyf2ht6aenh.cloudfront.net/stores/188/770/products/remera-negra-remera-hombre-remera-basica-21-6952776c38b5e6844216537450098865-640-0.webp",
+     10
  
-};
+ );
 
-const product2 = {
+ProductManager.addProduct(
+  "camisa",
+  "camisa larga",
+  2000,
+  "https://http2.mlstatic.com/D_NQ_NP_852996-MLA53168359304_012023-W.jpg",
+  14
+)
+ProductManager.addProduct(
+  "pantalon",
+  "pantalon de jean",
+   3000,
+  "https://http2.mlstatic.com/D_NQ_NP_637588-MLA49328528400_032022-W.jpg",
+   20
+  )
 
-  title:"camisa",
-  description: "camisa larga",
-  price: 2000,
-  thumbnail: "https://http2.mlstatic.com/D_NQ_NP_852996-MLA53168359304_012023-W.jpg",
-  stock: 14
-};
+//actualizar un producto pasando el ID y luego un obj con el nuevo stock
+ProductManager.updateProduct(8, {stock: 8});
 
-const product3 = {
-  title:"pantalon",
-  description: "pantalon de jean",
-  price: 3000,
-  thumbnail: "https://http2.mlstatic.com/D_NQ_NP_637588-MLA49328528400_032022-W.jpg",
-  stock: 20
-};
+//productManager.deleteProduct(2);
+
+
+
+
 
  
